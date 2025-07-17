@@ -1,10 +1,11 @@
 import streamlit as st
 from datetime import date
-from stock_list import get_fo_stocks  # This import is correct
+from stock_list import get_fo_stocks
 from stock_engine import fetch_data, generate_stock_signals, backtest_strategy
 from option_chain import get_oi_levels
 from telegram_alert import send_telegram_message, log_trade, load_trade_log
 import plotly.graph_objects as go
+from streamlit_autorefresh import st_autorefresh  # Add this import
 
 # Configure page
 st.set_page_config(
@@ -15,9 +16,9 @@ st.set_page_config(
 st.title("📈 Stock Options Analyzer with Live Signals, Journal & Backtest")
 
 # Add auto-refresh every 5 minutes
-st_autorefresh = st.sidebar.checkbox("Auto-refresh data (5 min)", value=True)
-if st_autorefresh:
-    st_autorefresh(interval=5 * 60 * 1000, key="data_refresh")
+autorefresh_checkbox = st.sidebar.checkbox("Auto-refresh data (5 min)", value=True)
+if autorefresh_checkbox:
+    st_autorefresh(interval=5 * 60 * 1000, key="data_refresh")  # 5 minutes in milliseconds
 
 # Create tabs
 tab1, tab2, tab3 = st.tabs(["📉 Live Signal", "📋 Trade Journal", "🧪 Backtest"])
