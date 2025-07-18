@@ -3,7 +3,6 @@ import streamlit as st
 import csv
 import os
 from datetime import datetime
-import pandas as pd
 
 BOT_TOKEN = st.secrets["BOT_TOKEN"]
 CHAT_ID = st.secrets["CHAT_ID"]
@@ -40,6 +39,8 @@ def log_trade(row):
         ])
 
 def load_trade_log():
-    if os.path.exists("trade_log.csv"):
-        return pd.read_csv("trade_log.csv")
-    return pd.DataFrame()
+    file = "trade_log.csv"
+    if os.path.exists(file):
+        return pd.read_csv(file)
+    else:
+        return pd.DataFrame()
