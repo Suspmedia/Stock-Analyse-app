@@ -15,6 +15,7 @@ def get_oi_levels(stock):
         strike = d.get("strikePrice")
         ce = d.get("CE", {})
         pe = d.get("PE", {})
+
         rows.append({
             "strike": strike,
             "CE_price": ce.get("lastPrice", 0),
@@ -25,5 +26,6 @@ def get_oi_levels(stock):
             "PE_vol": pe.get("totalTradedVolume", 0)
         })
 
-    df = pd.DataFrame(rows).sort_values("strike")
+    df = pd.DataFrame(rows)
+    df = df.sort_values("strike")
     return {"df": df}
