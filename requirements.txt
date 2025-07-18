@@ -6,3 +6,5 @@ ta
 requests
 plotly
 kaleido
+fake-useragent==1.4.0
+beautifulsoup4==4.12.3
