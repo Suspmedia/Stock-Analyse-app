@@ -2,25 +2,24 @@ import requests
 import pandas as pd
 import streamlit as st
 import time
-from fake_useragent import UserAgent
+from datetime import datetime, timedelta
+import os
 
-# Extended fallback list
+# Extended fallback list (updated July 2024)
 DEFAULT_FO_STOCKS = [
     "RELIANCE", "TATASTEEL", "HDFCBANK", "ICICIBANK", "INFY",
     "BHARTIARTL", "SBIN", "ADANIPORTS", "TATAMOTORS", "HINDUNILVR",
-    "KOTAKBANK", "BAJFINANCE", "LT", "HCLTECH", "ASIANPAINT",
-    "MARUTI", "TITAN", "NTPC", "ONGC", "POWERGRID"
+    "KOTAKBANK", "BAJFINANCE", "LT", "HCLTECH", "TCS",
+    "MARUTI", "ITC", "NTPC", "ONGC", "POWERGRID",
+    "ULTRACEMCO", "NESTLEIND", "WIPRO", "HDFCLIFE", "DRREDDY"
 ]
 
 def get_nse_headers():
-    """Generate dynamic headers with random user agent"""
-    ua = UserAgent()
+    """Generate realistic browser headers"""
     return {
-        "User-Agent": ua.random,
-        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+        "Accept": "*/*",
         "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive",
         "Referer": "https://www.nseindia.com/",
         "Origin": "https://www.nseindia.com",
         "Sec-Fetch-Dest": "empty",
@@ -28,65 +27,60 @@ def get_nse_headers():
         "Sec-Fetch-Site": "same-origin"
     }
 
-def get_nse_session():
-    """Create authenticated session with cookies"""
-    session = requests.Session()
-    try:
-        # First request to set cookies
-        session.get(
-            "https://www.nseindia.com",
-            headers=get_nse_headers(),
-            timeout=10
-        )
-        time.sleep(2)  # Critical delay for cookie setting
-        return session
-    except Exception as e:
-        st.warning(f"Session creation failed: {str(e)}")
-        return None
-
 def get_fo_stocks():
-    """Fetch F&O stocks with multiple fallback methods"""
-    # Method 1: Try live API with proper authentication
-    session = get_nse_session()
-    if session:
-        try:
-            url = "https://www.nseindia.com/api/equity-stockIndices?index=SECURITIES%20IN%20F%26O"
-            response = session.get(
-                url,
-                headers=get_nse_headers(),
-                timeout=15
-            )
-            response.raise_for_status()
-            
-            data = response.json()
-            if "data" in data:
-                symbols = [item["symbol"] for item in data["data"]]
-                return sorted(list(set(symbols)))
-        except Exception as e:
-            st.warning(f"API Error: {str(e)}")
-
-    # Method 2: Try web scraping fallback
+    """Main function with multiple fallback layers"""
+    # Method 1: Try official NSE API with proper session
     try:
-        from bs4 import BeautifulSoup
-        response = requests.get(
-            "https://www.nseindia.com/products/content/derivatives/equities/fo_underlying.htm",
+        session = requests.Session()
+        
+        # Initial request to set cookies
+        session.get("https://www.nseindia.com", headers=get_nse_headers(), timeout=10)
+        time.sleep(2)  # Critical delay
+        
+        # API request
+        response = session.get(
+            "https://www.nseindia.com/api/equity-stockIndices?index=NIFTY%2050",
             headers=get_nse_headers(),
             timeout=15
         )
-        soup = BeautifulSoup(response.text, 'html.parser')
-        table = soup.find('table', {'id': 'octable'})
-        symbols = [row.find_all('td')[0].text.strip() for row in table.find_all('tr')[1:]]
-        return sorted(list(set(symbols)))
-    except:
-        pass
+        response.raise_for_status()
+        
+        data = response.json()
+        if "data" in data:
+            return sorted(list(set(item["symbol"] for item in data["data"])))
+    except Exception as e:
+        st.warning(f"API attempt failed: {str(e)}")
 
-    # Method 3: Static CSV fallback
+    # Method 2: Try archived CSV
     try:
-        url = "https://archives.nseindia.com/content/fo/fo_mktlots.csv"
+        today = datetime.now().strftime("%d%m%Y")
+        url = f"https://archives.nseindia.com/content/fo/fo_mktlots_{today}.csv"
         df = pd.read_csv(url)
         return sorted(df["SYMBOL"].unique().tolist())
     except:
         pass
 
+    # Method 3: Try static underlying list
+    try:
+        url = "https://www.nseindia.com/products/content/derivatives/equities/fo_underlying.htm"
+        response = requests.get(url, headers=get_nse_headers(), timeout=15)
+        tables = pd.read_html(response.text)
+        if tables:
+            return sorted(tables[0]["SYMBOL"].dropna().unique().tolist())
+    except:
+        pass
+
+    # Method 4: Cached version
+    cache_file = "fo_stocks_cache.json"
+    try:
+        if os.path.exists(cache_file):
+            cache_time = datetime.fromtimestamp(os.path.getmtime(cache_file))
+            if datetime.now() - cache_time < timedelta(days=1):
+                with open(cache_file, "r") as f:
+                    return sorted(json.load(f))
+    except:
+        pass
+
     # Final fallback
+    st.warning("Using default stock list")
     return DEFAULT_FO_STOCKS
