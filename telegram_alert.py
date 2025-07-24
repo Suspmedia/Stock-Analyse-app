@@ -3,9 +3,10 @@ import streamlit as st
 import csv
 import os
 from datetime import datetime
+import pandas as pd  # ✅ Added import
 
-BOT_TOKEN = st.secrets["BOT_TOKEN"]
-CHAT_ID = st.secrets["CHAT_ID"]
+BOT_TOKEN = st.secrets.get("BOT_TOKEN", "mock_token")  # ✅ Safe fallback
+CHAT_ID = st.secrets.get("CHAT_ID", "mock_chat")       # ✅ Safe fallback
 
 def send_telegram_message(message):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
