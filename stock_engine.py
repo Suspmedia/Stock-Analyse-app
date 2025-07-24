@@ -1,3 +1,6 @@
+import appdirs as ad
+ad.user_cache_dir = lambda *args: "/tmp"
+
 # --- Full stock_engine.py with robust logging ---
 import yfinance as yf
 import pandas as pd
