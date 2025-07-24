@@ -1,7 +1,7 @@
+# --- Full stock_engine.py with 15m interval and fallback demo data ---
 import appdirs as ad
 ad.user_cache_dir = lambda *args: "/tmp"
 
-# --- Full stock_engine.py with robust logging ---
 import yfinance as yf
 import pandas as pd
 from ta.momentum import RSIIndicator
@@ -13,7 +13,7 @@ import streamlit as st
 # ------------------ Fetch OHLC + Indicators ------------------
 def fetch_data(symbol):
     try:
-        df = yf.download(symbol + ".NS", period="10d", interval="5m", progress=False)
+        df = yf.download(symbol + ".NS", period="7d", interval="15m", progress=False)
         if df.empty:
             raise ValueError(f"No data returned for {symbol}.NS")
 
@@ -26,7 +26,20 @@ def fetch_data(symbol):
         return df
     except Exception as e:
         st.error(f"fetch_data Error for {symbol}: {e}")
-        return None
+        # Fallback demo data
+        st.warning("Using fallback demo data.")
+        demo_df = pd.DataFrame({
+            "Close": [100, 102, 101, 103, 104],
+            "Volume": [1000, 1500, 1200, 1300, 1400],
+            "High": [101, 103, 102, 104, 105],
+            "Low": [99, 101, 100, 102, 103]
+        })
+        demo_df["RSI"] = RSIIndicator(close=demo_df["Close"]).rsi()
+        macd = MACD(close=demo_df["Close"])
+        demo_df["MACD"] = macd.macd()
+        demo_df["MACD_signal"] = macd.macd_signal()
+        demo_df["VWAP"] = (demo_df["Volume"] * (demo_df["High"] + demo_df["Low"] + demo_df["Close"]) / 3).cumsum() / demo_df["Volume"].cumsum()
+        return demo_df
 
 # ------------------ Signal Logic ------------------
 def evaluate_signal(df, strategy):
@@ -89,7 +102,7 @@ def backtest_strategy(symbol, strategy):
         try:
             df = yf.download(symbol + ".NS", start=date_check.strftime("%Y-%m-%d"),
                              end=(date_check + timedelta(days=1)).strftime("%Y-%m-%d"),
-                             interval="5m", progress=False)
+                             interval="15m", progress=False)
             if df.empty:
                 continue
 
